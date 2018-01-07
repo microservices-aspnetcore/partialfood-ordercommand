@@ -1,4 +1,4 @@
-box: microsoft/dotnet:1.1.1-sdk
+box: microsoft/dotnet:2.0.4-sdk-2.1.3
 no-response-timeout: 10
 
 build:
