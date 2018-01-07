@@ -23,7 +23,7 @@ build:
     - script:
         name: copy binary
         cwd: src/PartialFoods.Services.OrderCommandServer
-        code: |
+        code: | 
           cp -r . $WERCKER_OUTPUT_DIR/app 
     - script:
         name: copy entrypoint
