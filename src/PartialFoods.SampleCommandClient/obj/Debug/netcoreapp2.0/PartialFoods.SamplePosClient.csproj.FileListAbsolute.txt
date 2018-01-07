@@ -1,0 +1,10 @@
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/bin/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.deps.json
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/bin/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.runtimeconfig.json
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/bin/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.runtimeconfig.dev.json
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/bin/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.dll
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/bin/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.pdb
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/obj/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.csproj.CoreCompileInputs.cache
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/obj/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.AssemblyInfoInputs.cache
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/obj/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.AssemblyInfo.cs
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/obj/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.dll
+/home/kevin/Code/DotNet/partialfoods/src/PartialFoods.SamplePosClient/obj/Debug/netcoreapp2.0/PartialFoods.SamplePosClient.pdb
