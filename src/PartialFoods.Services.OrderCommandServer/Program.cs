@@ -1,14 +1,25 @@
 ﻿using System;
+using System.IO;
 using Grpc.Core;
+using Microsoft.Extensions.Configuration;
 using PartialFoods.Services;
 
 namespace PartialFoods.Services.OrderCommandServer
 {
     class Program
     {
+        public static IConfigurationRoot Configuration { get; set; }
+
         static void Main(string[] args)
         {
-            const int Port = 3000;
+            var builder = new ConfigurationBuilder()
+               .SetBasePath(Directory.GetCurrentDirectory())
+               .AddEnvironmentVariables()
+               .AddJsonFile("appsettings.json");
+
+            Configuration = builder.Build();
+
+            var port = int.Parse(Configuration["service:port"]);
 
             IEventEmitter kafkaEmitter = new KafkaEventEmitter();
             // TODO: this channel needs to use a service-discovery hostname
@@ -18,11 +29,11 @@ namespace PartialFoods.Services.OrderCommandServer
             Server server = new Server
             {
                 Services = { OrderCommand.BindService(new OrderCommandImpl(kafkaEmitter, orderClient)) },
-                Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
+                Ports = { new ServerPort("localhost", port, ServerCredentials.Insecure) }
             };
             server.Start();
 
-            Console.WriteLine("Orders Command RPC Service Listening on Port " + Port);
+            Console.WriteLine("Orders Command RPC Service Listening on Port " + port);
             Console.WriteLine("Press any key to stop");
 
             Console.ReadKey();
