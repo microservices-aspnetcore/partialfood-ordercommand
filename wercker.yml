@@ -42,6 +42,7 @@ deploy:
         cwd: $WERCKER_OUTPUT_DIR/app
         username: $USERNAME
         password: $PASSWORD
+        tag: v1
         repository: dotnetcoreservices/partialfood-ordercommand
         registry: https://registry.hub.docker.com
         entrypoint: "/pipeline/source/app/docker_entrypoint.sh"                  
