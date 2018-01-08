@@ -41,6 +41,6 @@ deploy:
      - internal/docker-push:
         username: _json_key
         password: $GCR_JSON_KEY_FILE
-        repository: gcr.io//presentations/pf-ordercommand
+        repository: gcr.io/presentations/pf-ordercommand
         registry: https://gcr.io/v2
         entrypoint: "/pipeline/source/app/docker_entrypoint.sh"                  
