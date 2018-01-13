@@ -38,11 +38,9 @@ build:
 
 deploy:
   steps:
-    - internal/docker-push:
-        cwd: $WERCKER_OUTPUT_DIR/app
-        username: $USERNAME
-        password: $PASSWORD
-        tag: v1
-        repository: dotnetcoreservices/partialfood-ordercommand
-        registry: https://registry.hub.docker.com
+     - internal/docker-push:
+        username: _json_key
+        password: $GCR_JSON_KEY_FILE
+        repository: gcr.io/presentations/pf-ordercommand
+        registry: https://gcr.io/v2
         entrypoint: "/pipeline/source/app/docker_entrypoint.sh"                  
