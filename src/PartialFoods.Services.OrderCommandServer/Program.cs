@@ -1,13 +1,17 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PartialFoods.Services;
 
 namespace PartialFoods.Services.OrderCommandServer
 {
     class Program
     {
+        private static ManualResetEvent mre = new ManualResetEvent(false);
+
         public static IConfigurationRoot Configuration { get; set; }
 
         static void Main(string[] args)
@@ -17,13 +21,22 @@ namespace PartialFoods.Services.OrderCommandServer
                .AddEnvironmentVariables()
                .AddJsonFile("appsettings.json");
 
+
             Configuration = builder.Build();
+
+            ILoggerFactory loggerFactory = new LoggerFactory()
+                .AddConsole()
+                .AddDebug();
+
+            ILogger logger = loggerFactory.CreateLogger<Program>();
 
             var port = int.Parse(Configuration["service:port"]);
 
             IEventEmitter kafkaEmitter = new KafkaEventEmitter();
             // TODO: this channel needs to use a service-discovery hostname
-            Channel orderChannel = new Channel("127.0.0.1:3001", ChannelCredentials.Insecure);
+            Channel orderChannel = new Channel($"{Configuration["orderclient:hostname"]}:{Configuration["orderclient:port"]}",
+                 ChannelCredentials.Insecure);
+            logger.LogInformation($"Configured gRPC channel for Order Management client: {orderChannel.ResolvedTarget}");
             var orderClient = new OrderManagement.OrderManagementClient(orderChannel);
 
             Server server = new Server
@@ -33,12 +46,10 @@ namespace PartialFoods.Services.OrderCommandServer
             };
             server.Start();
 
-            Console.WriteLine("Orders Command RPC Service Listening on Port " + port);
-            Console.WriteLine("Press any key to stop");
+            logger.LogInformation("Orders Command RPC Service Listening on Port " + port);
 
-            Console.ReadKey();
-
-            server.ShutdownAsync().Wait();
+            // Keep the process alive without consuming CPU cycles
+            mre.WaitOne();
         }
     }
 }
