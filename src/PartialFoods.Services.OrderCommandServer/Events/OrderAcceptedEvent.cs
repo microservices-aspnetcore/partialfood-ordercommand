@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using PartialFoods.Services;
 
-namespace PartialFoods.Services.OrderCommandServer
+namespace PartialFoods.Services.OrderCommandServer.Events
 {
-    public class OrderAcceptedEvent
+    public abstract class OrderEvent : DomainEvent
     {
         [JsonProperty("order_id")]
         public string OrderID;
@@ -15,6 +15,16 @@ namespace PartialFoods.Services.OrderCommandServer
 
         [JsonProperty("user_id")]
         public string UserID;
+    }
+
+    public class OrderAcceptedEvent : OrderEvent
+    {
+        private const string ORDERS_TOPIC = "orders";
+
+        public override string Topic()
+        {
+            return ORDERS_TOPIC;
+        }
 
         [JsonProperty("tax_rate")]
         public uint TaxRate;
@@ -22,13 +32,15 @@ namespace PartialFoods.Services.OrderCommandServer
         [JsonProperty("line_items")]
         public ICollection<EventLineItem> LineItems;
 
-        public static OrderAcceptedEvent FromProto(OrderRequest tx)
+        public static OrderAcceptedEvent FromProto(OrderRequest tx, string orderID)
         {
             var evt = new OrderAcceptedEvent
             {
                 TaxRate = tx.TaxRate,
                 CreatedOn = tx.CreatedOn,
-                UserID = tx.UserID
+                UserID = tx.UserID,
+                EventID = Guid.NewGuid().ToString(),
+                OrderID = orderID
             };
             evt.LineItems = new List<EventLineItem>();
             foreach (LineItem li in tx.LineItems)

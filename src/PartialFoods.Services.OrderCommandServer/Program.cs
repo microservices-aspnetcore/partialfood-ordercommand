@@ -5,6 +5,10 @@ using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PartialFoods.Services;
+using PartialFoods.Services.OrderCommandServer.Events;
+using Grpc.Reflection.V1Alpha;
+using Grpc.Reflection;
+
 
 namespace PartialFoods.Services.OrderCommandServer
 {
@@ -35,12 +39,21 @@ namespace PartialFoods.Services.OrderCommandServer
             // TODO: this channel needs to use a service-discovery hostname
             Channel orderChannel = new Channel($"{Configuration["orderclient:hostname"]}:{Configuration["orderclient:port"]}",
                  ChannelCredentials.Insecure);
+            Channel inventoryChannel = new Channel($"{Configuration["inventoryclient:hostname"]}:{Configuration["inventoryclient:port"]}",
+                ChannelCredentials.Insecure);
             logger.LogInformation($"Configured gRPC channel for Order Management client: {orderChannel.ResolvedTarget}");
             var orderClient = new OrderManagement.OrderManagementClient(orderChannel);
+            var inventoryClient = new InventoryManagement.InventoryManagementClient(inventoryChannel);
+            logger.LogInformation($"Configured gRPC channel for Invnetory Management client: {inventoryChannel.ResolvedTarget}");
 
+            var refImpl = new ReflectionServiceImpl(
+                ServerReflection.Descriptor, OrderManagement.Descriptor);
+
+            var rpcLogger = loggerFactory.CreateLogger<OrderCommandImpl>();
             Server server = new Server
             {
-                Services = { OrderCommand.BindService(new OrderCommandImpl(kafkaEmitter, orderClient)) },
+                Services = { OrderCommand.BindService(new OrderCommandImpl(rpcLogger, kafkaEmitter, orderClient, inventoryClient)),
+                              ServerReflection.BindService(refImpl) },
                 Ports = { new ServerPort("localhost", port, ServerCredentials.Insecure) }
             };
             server.Start();

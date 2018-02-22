@@ -10,6 +10,8 @@ using Grpc.Core.Utils;
 using grpc = global::Grpc.Core;
 using PartialFoods.Services;
 using Google.Protobuf; // required for byte array extension
+using PartialFoods.Services.OrderCommandServer.Events;
+using Microsoft.Extensions.Logging;
 
 namespace PartialFoods.Services.OrderCommandServer
 {
@@ -17,21 +19,29 @@ namespace PartialFoods.Services.OrderCommandServer
     {
         private IEventEmitter eventEmitter;
         private OrderManagement.OrderManagementClient orderManagementClient;
+        private InventoryManagement.InventoryManagementClient inventoryManagementClient;
+        private ILogger logger;
 
-        public OrderCommandImpl(IEventEmitter emitter, OrderManagement.OrderManagementClient orderManagementClient)
+        public OrderCommandImpl(
+            ILogger logger,
+            IEventEmitter emitter,
+         OrderManagement.OrderManagementClient orderManagementClient,
+         InventoryManagement.InventoryManagementClient inventoryManagementClient)
         {
-            eventEmitter = emitter;
+            this.logger = logger;
+            this.eventEmitter = emitter;
             this.orderManagementClient = orderManagementClient;
+            this.inventoryManagementClient = inventoryManagementClient;
         }
 
         public override Task<CancelOrderResponse> CancelOrder(CancelOrderRequest request, grpc::ServerCallContext context)
         {
-            Console.WriteLine("Handling Order cancellation request");
-
-
+            logger.LogInformation("Handling Order cancellation request");
             var result = new CancelOrderResponse();
             try
             {
+                var agg = new OrderAggregate(request.OrderID);
+                // TODO: load aggregate with order events
                 var exists = orderManagementClient.OrderExists(new GetOrderRequest { OrderID = request.OrderID });
                 if (!exists.Exists)
                 {
@@ -40,40 +50,20 @@ namespace PartialFoods.Services.OrderCommandServer
                 }
                 var originalOrder = orderManagementClient.GetOrder(new GetOrderRequest { OrderID = request.OrderID });
 
-                var evt = new OrderCanceledEvent
-                {
-                    OrderID = request.OrderID,
-                    UserID = request.UserID,
-                    CreatedOn = (ulong)DateTime.UtcNow.Ticks,
-                    ActivityID = Guid.NewGuid().ToString(),
-                };
+                var productAggregates = GetProductAggregates(originalOrder.LineItems.ToArray());
 
-                if (eventEmitter.EmitOrderCanceledEvent(evt))
+                IList<DomainEvent> evts = agg.Cancel(request.UserID, productAggregates);
+                foreach (var evt in evts)
                 {
-                    result.ConfirmationCode = Guid.NewGuid().ToString();
-                    result.Canceled = true;
-                    foreach (var li in originalOrder.LineItems)
-                    {
-                        eventEmitter.EmitInventoryReleasedEvent(new InventoryReleasedEvent
-                        {
-                            SKU = li.SKU,
-                            ReleasedOn = (ulong)DateTime.UtcNow.Ticks,
-                            Quantity = li.Quantity,
-                            OrderID = request.OrderID,
-                            UserID = request.UserID,
-                            EventID = Guid.NewGuid().ToString()
-                        });
-                    }
+                    this.eventEmitter.Emit(evt);
                 }
-                else
-                {
-                    result.Canceled = false;
-                }
+                result.Canceled = true;
+                result.ConfirmationCode = Guid.NewGuid().ToString(); // unused
                 return Task.FromResult(result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to handle order cancellation {ex.ToString()}");
+                logger.LogError(ex, "Failed to cancel order");
                 result.Canceled = false;
                 return Task.FromResult(result);
             }
@@ -81,7 +71,7 @@ namespace PartialFoods.Services.OrderCommandServer
 
         public override Task<OrderResponse> SubmitOrder(OrderRequest request, grpc::ServerCallContext context)
         {
-            Console.WriteLine("Handling Order Request Submission");
+            logger.LogInformation("Handling Order Request Submission");
             var response = new OrderResponse();
 
             if (!isValidRequest(request))
@@ -90,34 +80,41 @@ namespace PartialFoods.Services.OrderCommandServer
                 return Task.FromResult(response);
             }
 
-            var evt = OrderAcceptedEvent.FromProto(request);
-
-            if (eventEmitter.EmitOrderAcceptedEvent(evt))
+            try
             {
-                foreach (var li in evt.LineItems)
+                var agg = new OrderAggregate(Guid.NewGuid().ToString());
+                var productAggregates = GetProductAggregates(request.LineItems.ToArray());
+                var evts = agg.Accept(request, productAggregates);
+                foreach (var evt in evts)
                 {
-                    var reservedEvent = new InventoryReservedEvent
-                    {
-                        OrderID = evt.OrderID,
-                        ReservedOn = (ulong)DateTime.UtcNow.Ticks,
-                        SKU = li.SKU,
-                        Quantity = li.Quantity,
-                        UserID = evt.UserID
-                    };
-                    if (!eventEmitter.EmitInventoryReservedEvent(reservedEvent))
-                    {
-                        response.Accepted = false;
-                        return Task.FromResult(response);
-                    }
+                    this.eventEmitter.Emit(evt);
                 }
-                response.OrderID = evt.OrderID;
                 response.Accepted = true;
+                response.OrderID = agg.OrderID;
+                return Task.FromResult(response);
             }
-            else
+            catch (Exception ex)
             {
+                logger.LogError(ex, "Failed to submit order");
                 response.Accepted = false;
+                return Task.FromResult(response);
             }
-            return Task.FromResult(response);
+        }
+
+        private Dictionary<String, ProductAggregate> GetProductAggregates(LineItem[] lineItems)
+        {
+            var productAggregates = new Dictionary<String, ProductAggregate>();
+            foreach (var lineItem in lineItems)
+            {
+                var activity = inventoryManagementClient.GetActivity(new GetProductRequest
+                {
+                    SKU = lineItem.SKU
+                });
+                var pagg = new ProductAggregate(lineItem.SKU);
+                pagg.ApplyAll(activity.Activities.ToArray());
+                productAggregates[lineItem.SKU] = pagg;
+            }
+            return productAggregates;
         }
 
         private bool isValidRequest(OrderRequest request)

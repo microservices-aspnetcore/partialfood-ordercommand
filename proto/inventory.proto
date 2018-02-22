@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package PartialFoods.Services;
+
+service InventoryManagement {
+    rpc GetEffectiveQuantity(GetProductRequest) returns (GetQuantityResponse);
+    rpc GetActivity(GetProductRequest) returns (ActivityResponse);
+}
+
+message GetProductRequest {
+    string SKU = 1;
+}
+
+message GetQuantityResponse {
+    uint32 Quantity = 1;
+}
+
+message ActivityResponse {
+    repeated Activity Activities = 1;
+}
+
+message Activity {
+    string SKU = 1;
+    uint64 Timestamp = 2;
+    uint32 Quantity = 3;
+    ActivityType ActivityType = 4;
+    string ActivityID = 5;
+    string OrderID = 6;
+}
+
+enum ActivityType {
+    AT_UNKNOWN = 0;
+    RESERVED = 1;
+    RELEASED = 2;
+    SHIPPED = 3;
+    STOCKADD = 4;
+}
