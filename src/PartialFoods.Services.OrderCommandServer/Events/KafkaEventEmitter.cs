@@ -1,25 +1,41 @@
 using System;
-using KafkaNet;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
+using System.Collections.Generic;
+using System.Text;
+using Confluent.Kafka;
+using Confluent.Kafka.Serialization;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace PartialFoods.Services.OrderCommandServer.Events
 {
     public class KafkaEventEmitter : IEventEmitter
     {
+        private Dictionary<string, object> config;
+        private ILogger logger;
+
+        public KafkaEventEmitter(Dictionary<string, object> config, ILogger logger)
+        {
+            this.config = config;
+            this.logger = logger;
+            logger.LogInformation($"Kafka event emitter configured for broker list {config["bootstrap.servers"]}");
+        }
+
         public bool Emit(DomainEvent evt)
         {
             try
             {
-                var options = new KafkaOptions(new Uri("http://localhost:9092"));
-
-                var router = new BrokerRouter(options);
-                var client = new Producer(router);
                 var topic = evt.Topic();
-
                 string messageJson = JsonConvert.SerializeObject(evt);
-                Console.WriteLine($"Emitting event {evt.EventID} on topic {topic}.");
+                logger.LogInformation($"Emitting event {evt.GetType().FullName} ({evt.EventID}) on topic {topic}.");
+                using (var producer = new Producer<Null, string>(this.config, null, new StringSerializer(Encoding.UTF8)))
+                {
+                    var result = producer.ProduceAsync(topic, null, messageJson).Result;
+                    if (result.Error != null)
+                    {
+                        // log the error
+                        return false;
+                    }
+                }
                 return true;
             }
             catch (Exception ex)
@@ -28,94 +44,5 @@ namespace PartialFoods.Services.OrderCommandServer.Events
                 return false;
             }
         }
-
-        /* 
-                public bool EmitInventoryReleasedEvent(InventoryReleasedEvent evt)
-                {
-                    try
-                    {
-                        var options = new KafkaOptions(new Uri("http://localhost:9092"));
-
-                        var router = new BrokerRouter(options);
-                        var client = new Producer(router);
-
-                        string messageJson = JsonConvert.SerializeObject(evt);
-                        Console.WriteLine($"Emitting Inventory Released Event {evt.EventID}");
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to emit inventory released event {ex.ToString()}");
-                        return false;
-                    }
-
-                }
-                public bool EmitOrderAcceptedEvent(OrderAcceptedEvent evt)
-                {
-                    try
-                    {
-                        evt.OrderID = Guid.NewGuid().ToString();
-                        var options = new KafkaOptions(new Uri("http://localhost:9092"));
-
-                        var router = new BrokerRouter(options);
-                        var client = new Producer(router);
-
-                        string messageJson = JsonConvert.SerializeObject(evt);
-                        Console.WriteLine($"Emitting Order Accepted Event {evt.OrderID}");
-                        client.SendMessageAsync(ORDERS_TOPIC, new[] { new Message(messageJson) }).Wait();
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to emit order accepted event {ex.ToString()}");
-                        return false;
-                    }
-                }
-
-                public bool EmitOrderCanceledEvent(OrderCanceledEvent evt)
-                {
-                    try
-                    {
-                        var options = new KafkaOptions(new Uri("http://localhost:9092"));
-
-                        var router = new BrokerRouter(options);
-                        var client = new Producer(router);
-
-                        string messageJson = JsonConvert.SerializeObject(evt);
-                        Console.WriteLine($"Emitting order canceled event for order {evt.OrderID}");
-                        client.SendMessageAsync(CANCELED_TOPIC, new[] { new Message(messageJson) }).Wait();
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to emit order canceled event {ex.ToString()}");
-                        return false;
-                    }
-                }
-
-                public bool EmitInventoryReservedEvent(InventoryReservedEvent evt)
-                {
-                    try
-                    {
-                        evt.EventID = Guid.NewGuid().ToString();
-                        var options = new KafkaOptions(new Uri("http://localhost:9092"));
-
-                        var router = new BrokerRouter(options);
-                        var client = new Producer(router);
-
-                        string messageJson = JsonConvert.SerializeObject(evt);
-                        Console.WriteLine($"Emitting Inventory Reserved Event for Order {evt.OrderID}, SKU {evt.SKU}");
-                        client.SendMessageAsync(RESERVED_TOPIC, new[] { new Message(messageJson) }).Wait();
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to emit inventory reserved event {ex.ToString()}");
-                        return false;
-                    }
-                } */
     }
 }

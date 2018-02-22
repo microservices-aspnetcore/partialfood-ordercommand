@@ -8,7 +8,7 @@ using PartialFoods.Services;
 using PartialFoods.Services.OrderCommandServer.Events;
 using Grpc.Reflection.V1Alpha;
 using Grpc.Reflection;
-
+using System.Collections.Generic;
 
 namespace PartialFoods.Services.OrderCommandServer
 {
@@ -35,19 +35,28 @@ namespace PartialFoods.Services.OrderCommandServer
 
             var port = int.Parse(Configuration["service:port"]);
 
-            IEventEmitter kafkaEmitter = new KafkaEventEmitter();
+            string brokerList = Configuration["kafkaclient:brokerlist"];
+            var config = new Dictionary<string, object>
+            {
+                { "group.id", "order-command"},
+                { "enable.auto.commit", "false"},
+                { "bootstrap.servers", brokerList }
+            };
+
+            IEventEmitter kafkaEmitter = new KafkaEventEmitter(config, loggerFactory.CreateLogger<KafkaEventEmitter>());
             // TODO: this channel needs to use a service-discovery hostname
             Channel orderChannel = new Channel($"{Configuration["orderclient:hostname"]}:{Configuration["orderclient:port"]}",
                  ChannelCredentials.Insecure);
             Channel inventoryChannel = new Channel($"{Configuration["inventoryclient:hostname"]}:{Configuration["inventoryclient:port"]}",
                 ChannelCredentials.Insecure);
             logger.LogInformation($"Configured gRPC channel for Order Management client: {orderChannel.ResolvedTarget}");
+            logger.LogInformation($"Configured gRPC channel for Inventory Management client: {inventoryChannel.ResolvedTarget}");
+
             var orderClient = new OrderManagement.OrderManagementClient(orderChannel);
             var inventoryClient = new InventoryManagement.InventoryManagementClient(inventoryChannel);
-            logger.LogInformation($"Configured gRPC channel for Invnetory Management client: {inventoryChannel.ResolvedTarget}");
 
             var refImpl = new ReflectionServiceImpl(
-                ServerReflection.Descriptor, OrderManagement.Descriptor);
+                ServerReflection.Descriptor, OrderCommand.Descriptor);
 
             var rpcLogger = loggerFactory.CreateLogger<OrderCommandImpl>();
             Server server = new Server
@@ -58,7 +67,7 @@ namespace PartialFoods.Services.OrderCommandServer
             };
             server.Start();
 
-            logger.LogInformation("Orders Command RPC Service Listening on Port " + port);
+            logger.LogInformation("Orders Command gRPC Service Listening on Port " + port);
 
             // Keep the process alive without consuming CPU cycles
             mre.WaitOne();

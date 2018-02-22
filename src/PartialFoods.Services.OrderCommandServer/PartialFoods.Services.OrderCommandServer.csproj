@@ -15,7 +15,7 @@
     <PackageReference Include="Grpc" Version="1.9.0" />
     <PackageReference Include="Grpc.Tools" Version="1.9.0" />
     <PackageReference Include="Grpc.Reflection" Version="1.9.0"/>
-    <PackageReference Include="kafka-net-net40-net45-netstandard13" Version="1.0.0-alpha" />
+    <PackageReference Include="Confluent.Kafka" Version="0.11.3" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
   </ItemGroup>
 </Project>
