@@ -1,0 +1,24 @@
+{
+    "CreatedOn": 1519488742765,
+    "UserID": "kevin",
+    "TaxRate": 1,
+    "ShippingInfo": {
+        "Addressee": "Kevin Hoffman",
+        "AddressLines": [],
+        "City": "New York",
+        "StateCode": "NY",
+        "ZipCode": "10014"
+    },
+    "LineItems": [
+        {
+            "SKU": "ABC123",
+            "UnitPrice": 100,
+            "Quantity": 10
+        },
+        {
+            "SKU": "SOAP12",
+            "UnitPrice": 50,
+            "Quantity": 5
+        }
+    ]
+}
